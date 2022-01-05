@@ -71,10 +71,12 @@ final class EditorTool {
         if let cachedPackageGraph = cachedPackageGraph {
             return cachedPackageGraph
         }
+
         let graph = try Workspace.loadRootGraph(at: packageRoot,
-                                                swiftCompiler: toolchain.swiftCompiler,
+                                                swiftCompiler: toolchain.swiftCompilerPath,
                                                 swiftCompilerFlags: [],
                                                 diagnostics: diagnostics.makeDiagnosticsEngine())
+
         guard !diagnostics.errorsReported else {
             throw ExitCode.failure
         }
