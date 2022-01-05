@@ -37,7 +37,7 @@ final class AddTargetTests: XCTestCase {
             )
             """
         
-        let editor = try ManifestRewriter(manifest, diagnosticsEngine: .init())
+        let editor = try ManifestRewriter(manifest)
         try editor.addTarget(targetName: "NewTarget", factoryMethodName: "target")
         try editor.addTarget(targetName: "NewTargetTests", factoryMethodName: "testTarget")
         try editor.addByNameTargetDependency(target: "NewTargetTests", dependency: "NewTarget")
@@ -89,7 +89,7 @@ final class AddTargetTests: XCTestCase {
                 )
                 """
 
-        let editor = try ManifestRewriter(manifest, diagnosticsEngine: .init())
+        let editor = try ManifestRewriter(manifest)
         try editor.addTarget(targetName: "NewTarget", factoryMethodName: "target")
 
         XCTAssertEqual(editor.editedManifest, """
@@ -124,7 +124,7 @@ final class AddTargetTests: XCTestCase {
                 )
                 """
 
-        let editor = try ManifestRewriter(manifest, diagnosticsEngine: .init())
+        let editor = try ManifestRewriter(manifest)
         try editor.addTarget(targetName: "NewTarget", factoryMethodName: "target")
 
         XCTAssertEqual(editor.editedManifest, """

@@ -9,7 +9,6 @@
 */
 
 import SwiftSyntax
-import SwiftSyntaxParser
 import TSCUtility
 import PackageModel
 import Basics

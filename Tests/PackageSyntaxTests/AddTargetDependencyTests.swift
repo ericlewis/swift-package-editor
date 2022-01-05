@@ -40,7 +40,7 @@ final class AddTargetDependencyTests: XCTestCase {
             )
             """
         
-        let editor = try ManifestRewriter(manifest, diagnosticsEngine: .init())
+        let editor = try ManifestRewriter(manifest)
         try editor.addByNameTargetDependency(
             target: "exec", dependency: "foo")
         try editor.addByNameTargetDependency(
@@ -107,7 +107,7 @@ final class AddTargetDependencyTests: XCTestCase {
             )
             """
 
-        let editor = try ManifestRewriter(manifest, diagnosticsEngine: .init())
+        let editor = try ManifestRewriter(manifest)
         try editor.addByNameTargetDependency(
             target: "foo", dependency: "dep")
         try editor.addByNameTargetDependency(

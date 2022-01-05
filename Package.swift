@@ -21,20 +21,10 @@ let package = Package(
     ],
     products: [
         .library(name: "PackageSyntax", targets: ["PackageSyntax"]),
-        .executable(
-            name: "swift-package-editor",
-            targets: ["swift-package-editor"])
     ],
     targets: [
-        .executableTarget(name: "swift-package-editor", dependencies: [
-            "PackageSyntax",
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            .product(name: "SwiftToolsSupport-auto", package: "swift-tools-support-core"),
-            .product(name: "SwiftPM-auto", package: "swift-package-manager"),
-        ]),
         .target(name: "PackageSyntax", dependencies: [
             .product(name: "SwiftSyntax", package: "swift-syntax"),
-            .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
             .product(name: "SwiftToolsSupport-auto", package: "swift-tools-support-core"),
             .product(name: "SwiftPM-auto", package: "swift-package-manager")
         ]),
@@ -45,10 +35,6 @@ let package = Package(
             .product(name: "SwiftPM-auto", package: "swift-package-manager"),
             .product(name: "PackageDescription", package: "swift-package-manager")
         ]),
-        .testTarget(name: "IntegrationTests", dependencies: [
-            "swift-package-editor",
-            .product(name: "TSCTestSupport", package: "swift-tools-support-core")
-        ], resources: [.copy("Fixtures/")])
     ]
 )
 
@@ -57,17 +43,12 @@ let relatedDependenciesBranch = "main"
 if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
     package.dependencies += [
         .package(url: "https://github.com/apple/swift-tools-support-core.git", .branch(relatedDependenciesBranch)),
-        // The 'swift-argument-parser' version declared here must match that
-        // used by 'swift-driver', 'sourcekit-lsp', and 'swiftpm'. Please coordinate
-        // dependency version changes here with those projects.
-        .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMinor(from: "1.0.1")),
         .package(url: "https://github.com/apple/swift-package-manager.git", .branch(relatedDependenciesBranch)),
-        .package(url: "https://github.com/apple/swift-syntax.git", .branch(relatedDependenciesBranch))
+        .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50500.0"))
     ]
 } else {
     package.dependencies += [
         .package(path: "../swift-tools-support-core"),
-        .package(path: "../swift-argument-parser"),
         .package(name: "swift-package-manager", path: "../swiftpm"),
         .package(path: "../swift-syntax")
     ]

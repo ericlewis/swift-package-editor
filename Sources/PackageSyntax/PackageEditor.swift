@@ -369,7 +369,7 @@ public final class PackageEditorContext {
     public init(manifestPath: AbsolutePath,
                 repositoryManager: RepositoryManager,
                 toolchain: UserToolchain,
-                diagnosticsEngine: ObservabilityScope,
+                diagnosticsEngine: ObservabilityScope = ObservabilitySystem({ _, _ in }).topScope,
                 fs: FileSystem = localFileSystem) throws {
         self.manifestPath = manifestPath
         self.repositoryManager = repositoryManager
