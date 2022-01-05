@@ -39,7 +39,7 @@ public final class ManifestRewriter {
     private let diagnosticsEngine: ObservabilityScope
 
     /// Create a new manfiest editor with the given contents.
-    public init(_ manifest: String, diagnosticsEngine: ObservabilityScope) throws {
+    public init(_ manifest: String, diagnosticsEngine: ObservabilityScope = ObservabilitySystem({ _, _ in}).topScope) throws {
         self.originalManifest = manifest
         self.diagnosticsEngine = diagnosticsEngine
         self.editedSource = try SyntaxParser.parse(source: manifest)
