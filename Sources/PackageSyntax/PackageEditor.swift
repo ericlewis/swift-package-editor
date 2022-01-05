@@ -15,6 +15,7 @@ import PackageLoading
 import PackageModel
 import Workspace
 import Foundation
+import Basics
 
 /// An editor for Swift packages.
 ///
@@ -29,7 +30,7 @@ public final class PackageEditor {
     public convenience init(manifestPath: AbsolutePath,
                             repositoryManager: RepositoryManager,
                             toolchain: UserToolchain,
-                            diagnosticsEngine: DiagnosticsEngine) throws {
+                            diagnosticsEngine: ObservabilityScope) throws {
         self.init(context: try PackageEditorContext(manifestPath: manifestPath,
                                                     repositoryManager: repositoryManager,
                                                     toolchain: toolchain,
@@ -56,7 +57,7 @@ public final class PackageEditor {
         try diagnoseUnsupportedToolsVersions(manifest: loadedManifest)
 
         let containsDependency = loadedManifest.dependencies.contains {
-            return PackageIdentity(url: url) == $0.identity
+            return PackageIdentity(url: URL(string: url)!) == $0.identity
         }
         guard !containsDependency else {
             context.diagnosticsEngine.emit(.packageDependencyAlreadyExists(url: url,
@@ -65,7 +66,7 @@ public final class PackageEditor {
         }
 
         // If the input URL is a path, force the requirement to be a local package.
-        if TSCUtility.URL.scheme(url) == nil {
+        if URL.scheme(url) == nil {
             guard requirement == nil || requirement == .localPackage else {
                 context.diagnosticsEngine.emit(.nonLocalRequirementSpecifiedForLocalPath(path: url))
                 throw Diagnostics.fatalError
@@ -81,7 +82,7 @@ public final class PackageEditor {
             requirement = .localPackage
         } else {
             // Otherwise, first lookup the dependency.
-            let spec = RepositorySpecifier(url: url)
+            let spec = RepositorySpecifier(url: URL(string: url)!)
             let handle = try tsc_await{
               context.repositoryManager.lookup(repository: spec,
                                                on: .global(qos: .userInitiated),
@@ -94,7 +95,7 @@ public final class PackageEditor {
                 requirement = inputRequirement
             } else {
                 // Use the latest version or the main/master branch.
-                let versions = try repo.getTags().compactMap{ Version(string: $0) }
+                let versions = try repo.getTags().compactMap{ Version($0) }
                 let latestVersion = versions.filter({ $0.prereleaseIdentifiers.isEmpty }).max() ?? versions.max()
                 let mainExists = (try? repo.resolveRevision(identifier: "main")) != nil
                 requirement = latestVersion.map{ PackageDependencyRequirement.upToNextMajor($0.description) } ??
@@ -342,7 +343,7 @@ extension ProductType {
         switch self {
         case .library:
             return true
-        case .executable, .test, .plugin:
+        case .executable, .test, .plugin, .snippet:
             return false
         }
     }
@@ -363,19 +364,19 @@ public final class PackageEditorContext {
     let fs: FileSystem
 
     /// The diagnostics engine used to report errors.
-    let diagnosticsEngine: DiagnosticsEngine
+    let diagnosticsEngine: ObservabilityScope
 
     public init(manifestPath: AbsolutePath,
                 repositoryManager: RepositoryManager,
                 toolchain: UserToolchain,
-                diagnosticsEngine: DiagnosticsEngine,
+                diagnosticsEngine: ObservabilityScope,
                 fs: FileSystem = localFileSystem) throws {
         self.manifestPath = manifestPath
         self.repositoryManager = repositoryManager
         self.diagnosticsEngine = diagnosticsEngine
         self.fs = fs
 
-        self.manifestLoader = ManifestLoader(manifestResources: toolchain.manifestResources)
+        self.manifestLoader = ManifestLoader(toolchain: toolchain.configuration)
     }
 
     func verifyEditedManifest(contents: String) throws {
@@ -405,45 +406,44 @@ public final class PackageEditorContext {
             manifestLoader.load(
                 at: path,
                 packageIdentity: .plain("<synthesized-root>"),
-                packageKind: .local,
+                packageKind: .localSourceControl(path),
                 packageLocation: path.pathString,
                 version: nil,
                 revision: nil,
                 toolsVersion: toolsVersion,
                 identityResolver: DefaultIdentityResolver(),
                 fileSystem: fs,
-                diagnostics: .init(),
+                observabilityScope: diagnosticsEngine,
                 on: .global(),
-                completion: $0
-            )
+                completion: $0)
         }
     }
 }
 
-private extension Diagnostic.Message {
-    static func failedToLoadEditedManifest(error: Error) -> Diagnostic.Message {
+private extension Basics.Diagnostic {
+    static func failedToLoadEditedManifest(error: Error) -> Basics.Diagnostic {
         .error("discarding changes because the edited manifest could not be loaded: \(error)")
     }
-    static var unsupportedToolsVersionForEditing: Diagnostic.Message =
+    static var unsupportedToolsVersionForEditing: Basics.Diagnostic =
         .error("command line editing of manifests is only supported for packages with a swift-tools-version of 5.2 and later")
-    static var unsupportedToolsVersionForBinaryTargets: Diagnostic.Message =
+    static var unsupportedToolsVersionForBinaryTargets: Basics.Diagnostic =
         .error("binary targets are only supported in packages with a swift-tools-version of 5.3 and later")
-    static func productAlreadyExists(name: String, packageName: String) -> Diagnostic.Message {
+    static func productAlreadyExists(name: String, packageName: String) -> Basics.Diagnostic {
         .error("a product named '\(name)' already exists in '\(packageName)'")
     }
-    static func packageDependencyAlreadyExists(url: String, packageName: String) -> Diagnostic.Message {
+    static func packageDependencyAlreadyExists(url: String, packageName: String) -> Basics.Diagnostic {
         .error("'\(packageName)' already has a dependency on '\(url)'")
     }
-    static func noTarget(name: String, packageName: String) -> Diagnostic.Message {
+    static func noTarget(name: String, packageName: String) -> Basics.Diagnostic {
         .error("no target named '\(name)' in '\(packageName)'")
     }
-    static func targetAlreadyExists(name: String, packageName: String) -> Diagnostic.Message {
+    static func targetAlreadyExists(name: String, packageName: String) -> Basics.Diagnostic {
         .error("a target named '\(name)' already exists in '\(packageName)'")
     }
-    static func nonLocalRequirementSpecifiedForLocalPath(path: String) -> Diagnostic.Message {
+    static func nonLocalRequirementSpecifiedForLocalPath(path: String) -> Basics.Diagnostic {
         .error("'\(path)' is a local package, but a non-local requirement was specified")
     }
-    static func missingProductOrTarget(name: String) -> Diagnostic.Message {
+    static func missingProductOrTarget(name: String) -> Basics.Diagnostic {
         .error("could not find a product or target named '\(name)'")
     }
 }

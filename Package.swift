@@ -34,6 +34,7 @@ let package = Package(
         ]),
         .target(name: "PackageSyntax", dependencies: [
             .product(name: "SwiftSyntax", package: "swift-syntax"),
+            .product(name: "SwiftSyntaxParser", package: "swift-syntax"),
             .product(name: "SwiftToolsSupport-auto", package: "swift-tools-support-core"),
             .product(name: "SwiftPM-auto", package: "swift-package-manager")
         ]),

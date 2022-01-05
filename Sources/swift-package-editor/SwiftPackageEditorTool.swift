@@ -11,6 +11,7 @@
 import ArgumentParser
 import Basics
 import TSCBasic
+import TSCUtility
 import PackageModel
 import PackageGraph
 import SourceControl
@@ -31,14 +32,14 @@ public struct SwiftPackageEditorTool: ParsableCommand {
 }
 
 final class EditorTool {
-    let diagnostics: DiagnosticsEngine
+    let diagnostics: ObservabilityScope
     let packageRoot: AbsolutePath
     let toolchain: UserToolchain
     let packageEditor: PackageEditor
     private var cachedPackageGraph: PackageGraph?
 
     init() throws {
-        diagnostics = DiagnosticsEngine(handlers: [print(diagnostic:)])
+        diagnostics = ObservabilitySystem(print).topScope
 
         guard let cwd = localFileSystem.currentWorkingDirectory else {
             diagnostics.emit(.error("could not determine current working directory"))
@@ -59,8 +60,7 @@ final class EditorTool {
 
         let manifestPath = try Manifest.path(atPackagePath: packageRoot,
                                              fileSystem: localFileSystem)
-        let repositoryManager = RepositoryManager(path: packageRoot.appending(component: ".build"),
-                                                  provider: GitRepositoryProvider())
+        let repositoryManager = RepositoryManager(fileSystem: localFileSystem, path: manifestPath, provider: GitRepositoryProvider())
         packageEditor = try PackageEditor(manifestPath: manifestPath,
                                           repositoryManager: repositoryManager,
                                           toolchain: toolchain,
@@ -74,8 +74,8 @@ final class EditorTool {
         let graph = try Workspace.loadRootGraph(at: packageRoot,
                                                 swiftCompiler: toolchain.swiftCompiler,
                                                 swiftCompilerFlags: [],
-                                                diagnostics: diagnostics)
-        guard !diagnostics.hasErrors else {
+                                                diagnostics: diagnostics.makeDiagnosticsEngine())
+        guard !diagnostics.errorsReported else {
             throw ExitCode.failure
         }
         cachedPackageGraph = graph
@@ -91,7 +91,7 @@ extension EditorCommand {
     public func run() throws {
         let editorTool = try EditorTool()
         try self.run(editorTool)
-        if editorTool.diagnostics.hasErrors {
+        if editorTool.diagnostics.errorsReported {
             throw ExitCode.failure
         }
     }
@@ -239,7 +239,7 @@ struct AddTarget: EditorCommand {
         do {
             let mapping = try createProductPackageNameMapping(packageGraph: editorTool.loadPackageGraph())
             try editorTool.packageEditor.addTarget(newTarget, productPackageNameMapping: mapping)
-        } catch Diagnostics.fatalError {
+        } catch TSCUtility.Diagnostics.fatalError {
             throw ExitCode.failure
         }
     }
@@ -248,13 +248,13 @@ struct AddTarget: EditorCommand {
         var productPackageNameMapping: [String: String] = [:]
         for dependencyPackage in packageGraph.rootPackages.flatMap(\.dependencies) {
             for product in dependencyPackage.products {
-                productPackageNameMapping[product.name] = dependencyPackage.manifestName
+                productPackageNameMapping[product.name] = dependencyPackage.manifest.name
             }
         }
         return productPackageNameMapping
     }
 
-    private func verifyNoTargetBinaryOptionsPassed(diagnostics: DiagnosticsEngine) throws {
+    private func verifyNoTargetBinaryOptionsPassed(diagnostics: ObservabilityScope) throws {
         guard url == nil else {
             diagnostics.emit(.error("option '--url' is only supported for binary targets"))
             throw ExitCode.failure
@@ -287,7 +287,7 @@ struct AddProduct: EditorCommand {
     func run(_ editorTool: EditorTool) throws {
         do {
             try editorTool.packageEditor.addProduct(name: name, type: type ?? .library(.automatic), targets: targets)
-        } catch Diagnostics.fatalError {
+        } catch TSCUtility.Diagnostics.fatalError {
             throw ExitCode.failure
         }
     }
@@ -295,7 +295,7 @@ struct AddProduct: EditorCommand {
 
 extension Version: ExpressibleByArgument {
     public init?(argument: String) {
-        self.init(string: argument)
+        self.init(argument)
     }
 }
 
@@ -320,22 +320,22 @@ extension ProductType: ExpressibleByArgument {
     }
 }
 
-func print(diagnostic: Diagnostic) {
-    if !(diagnostic.location is UnknownLocation) {
-        stderrStream <<< diagnostic.location.description <<< ": "
-    }
-    switch diagnostic.message.behavior {
-    case .error:
-        stderrStream <<< "error: "
-    case .warning:
-        stderrStream <<< "warning: "
-    case .note:
-        stderrStream <<< "note"
-    case .remark:
-        stderrStream <<< "remark: "
-    case .ignored:
-        break
-    }
-    stderrStream <<< diagnostic.description <<< "\n"
-    stderrStream.flush()
+func print(_ scope: ObservabilityScope, _ diagnostic: Basics.Diagnostic) {
+//    if !(diagnostic.location is UnknownLocation) {
+//        stderrStream <<< diagnostic.location.description <<< ": "
+//    }
+//    switch diagnostic.message.behavior {
+//    case .error:
+//        stderrStream <<< "error: "
+//    case .warning:
+//        stderrStream <<< "warning: "
+//    case .note:
+//        stderrStream <<< "note"
+//    case .remark:
+//        stderrStream <<< "remark: "
+//    case .ignored:
+//        break
+//    }
+//    stderrStream <<< diagnostic.description <<< "\n"
+//    stderrStream.flush()
 }

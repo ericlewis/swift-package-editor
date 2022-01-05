@@ -9,9 +9,11 @@
 */
 
 import SwiftSyntax
-import TSCBasic
+import SwiftSyntaxParser
 import TSCUtility
 import PackageModel
+import Basics
+import Foundation
 
 /// A package manifest rewriter.
 ///
@@ -34,10 +36,10 @@ public final class ManifestRewriter {
     private var editedSource: SourceFileSyntax
 
     /// Engine used to report manifest rewrite failures.
-    private let diagnosticsEngine: DiagnosticsEngine
+    private let diagnosticsEngine: ObservabilityScope
 
     /// Create a new manfiest editor with the given contents.
-    public init(_ manifest: String, diagnosticsEngine: DiagnosticsEngine) throws {
+    public init(_ manifest: String, diagnosticsEngine: ObservabilityScope) throws {
         self.originalManifest = manifest
         self.diagnosticsEngine = diagnosticsEngine
         self.editedSource = try SyntaxParser.parse(source: manifest)
@@ -244,7 +246,7 @@ public final class ManifestRewriter {
         )
         args.append(nameArg)
 
-        if TSCUtility.URL.scheme(urlOrPath) == nil {
+        if URL.scheme(urlOrPath) == nil {
             guard checksum == nil else {
                 diagnosticsEngine.emit(.unexpectedChecksumForBinaryTarget(path: urlOrPath))
                 throw Diagnostics.fatalError
@@ -773,7 +775,7 @@ final class NewProductWriter: SyntaxRewriter {
     }
 }
 
-private extension TSCBasic.Diagnostic.Message {
+private extension Basics.Diagnostic {
     static var missingPackageInit: Self =
         .error("couldn't find Package initializer")
     static var multiplePackageInits: Self =
