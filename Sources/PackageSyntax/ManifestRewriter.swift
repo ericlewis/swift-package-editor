@@ -801,3 +801,27 @@ private extension Basics.Diagnostic {
         .error("'\(url)' is a remote URL, but no checksum was specified for the binary target")
     }
 }
+
+public enum PackageDependencyRequirement: Equatable {
+    case exact(String)
+    case revision(String)
+    case branch(String)
+    case upToNextMajor(String)
+    case upToNextMinor(String)
+    case range(String, String)
+    case closedRange(String, String)
+    case localPackage
+
+    var ref: String? {
+        switch self {
+        case .exact(let ref): return ref
+        case .revision(let ref): return ref
+        case .branch(let ref): return ref
+        case .upToNextMajor(let ref): return ref
+        case .upToNextMinor(let ref): return ref
+        case .range(let start, _): return start
+        case .closedRange(let start, _): return start
+        case .localPackage: return nil
+        }
+    }
+}
