@@ -20,6 +20,7 @@ let package = Package(
         .iOS(.v14)
     ],
     products: [
+        .library(name: "PackageSyntax", targets: ["PackageSyntax"]),
         .executable(
             name: "swift-package-editor",
             targets: ["swift-package-editor"])
